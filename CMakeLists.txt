@@ -4,7 +4,6 @@ project(OOP_LAB5 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ======= Добавляем GoogleTest =======
 add_subdirectory(googletest)
 foreach(target gtest gtest_main gmock gmock_main)
     if(TARGET ${target})
@@ -13,21 +12,17 @@ foreach(target gtest gtest_main gmock gmock_main)
 endforeach()
 
 
-# Чтобы подавить лишние warnings GoogleTest
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
 enable_testing()
 
-# ======= Основная библиотека =======
 add_library(lab5 STATIC
     src/memory_pool_resourse.cpp
 )
 
 target_include_directories(lab5 PUBLIC includes)
 
-# ======= main.exe =======
 add_executable(main main.cpp)
 target_link_libraries(main PRIVATE lab5)
 
-# ======= Тесты =======
 add_subdirectory(tests)

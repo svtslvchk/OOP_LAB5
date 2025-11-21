@@ -15,7 +15,6 @@ public:
     using allocator_type = std::pmr::polymorphic_allocator<T>;
     using size_type = std::size_t;
 
-    // forward iterator (с минимальным набором для forward iterator)
     struct iterator {
         using iterator_category = std::forward_iterator_tag;
         using value_type = T;
@@ -39,9 +38,9 @@ public:
         T* ptr_;
     };
 
-    using const_iterator = iterator; // for simplicity: const safety not enforced (we can refine later)
+    using const_iterator = iterator; 
 
-    // ctor with pmr resource pointer (default -> default resource)
+ 
     explicit pmr_vector(std::pmr::memory_resource* mr = std::pmr::get_default_resource(), size_type reserve_cap = 0)
         : alloc_(mr), data_(nullptr), size_(0), capacity_(0)
     {
@@ -56,7 +55,6 @@ public:
         }
     }
 
-    // non-copyable (simpler), movable
     pmr_vector(const pmr_vector&) = delete;
     pmr_vector& operator=(const pmr_vector&) = delete;
 
@@ -85,42 +83,35 @@ public:
 
     allocator_type get_allocator() const noexcept { return alloc_; }
 
-    // capacity / size
     size_type size() const noexcept { return size_; }
     size_type capacity() const noexcept { return capacity_; }
     bool empty() const noexcept { return size_ == 0; }
 
-    // element access
     T& operator[](size_type i) noexcept { assert(i < size_); return data_[i]; }
     const T& operator[](size_type i) const noexcept { assert(i < size_); return data_[i]; }
 
-    // iterators
     iterator begin() noexcept { return iterator(data_); }
     iterator end() noexcept { return iterator(data_ + size_); }
     const_iterator begin() const noexcept { return const_iterator(const_cast<T*>(data_)); }
     const_iterator end() const noexcept { return const_iterator(const_cast<T*>(data_ + size_)); }
 
-    // reserve: allocate new storage and move elements
     void reserve(size_type new_cap) {
         if (new_cap <= capacity_) return;
         T* new_data = alloc_.allocate(new_cap);
-        // move-construct existing elements into new_data
         for (size_type i = 0; i < size_; ++i) {
-            std::allocator_traits<allocator_type>::construct(alloc_, std::addressof(new_data[i]),
-                                                             std::move_if_noexcept(data_[i]));
+            std::allocator_traits<allocator_type>::construct(alloc_, std::addressof(new_data[i]), std::move_if_noexcept(data_[i]));
             std::allocator_traits<allocator_type>::destroy(alloc_, std::addressof(data_[i]));
         }
+
         if (data_) alloc_.deallocate(data_, capacity_);
         data_ = new_data;
         capacity_ = new_cap;
     }
 
-    // grow policy
     size_type grow_capacity() const noexcept {
         return capacity_ == 0 ? 1 : capacity_ * 2;
     }
 
-    // emplace_back / push_back
     template <typename... Args>
     T& emplace_back(Args&&... args) {
         if (size_ == capacity_) {

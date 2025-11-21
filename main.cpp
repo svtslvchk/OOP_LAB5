@@ -1,69 +1,97 @@
 #include <iostream>
-#include <memory_resource>
-#include "memory_pool_resourse.hpp"
+#include <string>
 #include "pmr_vector.hpp"
+#include "memory_pool_resourse.hpp"
 
-int main() {
-    std::cout << "=== PMR Vector Demo ===\n";
+struct Foo {
+    int a;
+    double b;
+    std::string s;
 
-    // создаём наш пул
-    memory_pool_resourse pool(64 * 1024);     // 64KB
-    std::pmr::polymorphic_allocator<int> alloc(&pool);
+    friend std::ostream& operator<<(std::ostream& os, const Foo& f) {
+        return os << "{a=" << f.a << ", b=" << f.b << ", s=\"" << f.s << "\"}";
+    }
+};
 
-    // создаём вектор, использующий наш пул
-    pmr_vector<int> vec(&pool);
-
-    std::cout << "Используется кастомный memory_resource (memory_pool_resourse)\n\n";
+template <typename T>
+void interactive_mode() {
+    memory_pool_resourse pool;
+    pmr_vector<T> vec(&pool);
 
     while (true) {
-        std::cout << "Доступные команды:\n"
-                  << "  push <x>    - добавить элемент\n"
-                  << "  pop         - удалить последний элемент\n"
-                  << "  print       - вывести элементы\n"
-                  << "  size        - размер вектора\n"
-                  << "  reserve <n> - зарезервировать память\n"
-                  << "  exit        - выход\n"
-                  << "> ";
+        std::cout <<
+            "Доступные команды:\n"
+            "  push <x>        - добавить элемент\n"
+            "  pop             - удалить последний элемент\n"
+            "  print           - вывести элементы\n"
+            "  size            - вывести size и capacity\n"
+            "  reserve <n>     - зарезервировать память\n"
+            "  get <i>         - вывести элемент по индексу\n"
+            "  exit            - выход\n> ";
 
         std::string cmd;
         std::cin >> cmd;
 
         if (cmd == "push") {
-            int x;
-            std::cin >> x;
-            vec.push_back(x);
-            std::cout << "Добавлен элемент " << x << "\n\n";
-        }
-        else if (cmd == "pop") {
-            if (!vec.empty()) {
-                vec.pop_back();
-                std::cout << "Удалён последний элемент\n\n";
+
+            if constexpr (std::is_same_v<T, int>) {
+                int x;
+                std::cin >> x;
+                vec.push_back(x);
             } else {
-                std::cout << "Вектор пуст\n\n";
+                Foo f;
+                std::cin >> f.a >> f.b >> f.s;
+                vec.push_back(f);
             }
-        }
-        else if (cmd == "print") {
+
+        } else if (cmd == "pop") {
+            if (vec.size()) vec.pop_back();
+        } else if (cmd == "print") {
             std::cout << "Содержимое: ";
-            for (auto &v : vec) std::cout << v << " ";
+            for (auto &x : vec) {
+                std::cout << x << " ";
+            }
+
             std::cout << "\n\n";
-        }
-        else if (cmd == "size") {
-            std::cout << "size = " << vec.size()
-                      << ", capacity = " << vec.capacity() << "\n\n";
-        }
-        else if (cmd == "reserve") {
+        } else if (cmd == "size") {
+            std::cout << "size = " << vec.size() << " capacity = " << vec.capacity() << "\n\n";
+        } else if (cmd == "reserve") {
             size_t n;
             std::cin >> n;
             vec.reserve(n);
-            std::cout << "capacity увеличена до " << vec.capacity() << "\n\n";
-        }
-        else if (cmd == "exit") {
-            std::cout << "Выход...\n";
+        } else if (cmd == "get") {
+            size_t i;
+            std::cin >> i;
+            if (i < vec.size()) {
+                std::cout << vec[i] << "\n\n";
+            } else {
+                std::cout << "Индекс вне диапазона\n\n";
+            }
+        } else if (cmd == "exit") {
             break;
-        }
-        else {
+        } else {
             std::cout << "Неизвестная команда\n\n";
         }
+    }
+}
+
+int main(int argc, char** argv) {
+
+    if (argc < 2) {
+        std::cout << "Запуск:\n"
+                     "  ./main int\n"
+                     "  ./main struct\n";
+        return 0;
+    }
+
+    std::string mode = argv[1];
+
+    if (mode == "int") {
+        interactive_mode<int>();
+    } else if (mode == "struct") {
+        interactive_mode<Foo>();
+    } else {
+        std::cout << "Неизвестный режим\n";
     }
 
     return 0;
